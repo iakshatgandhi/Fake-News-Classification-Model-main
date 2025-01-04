@@ -1,0 +1,32 @@
+# Compiled Python files
+__pycache__/
+
+# Virtual environment
+.venv/
+
+# IDE specific configuration (adjust as needed)
+.vscode/
+.idea/
+
+# Environment variables
+.env
+
+# Test files (adjust as needed)
+test_*.py
+
+# Generated artifacts
+*.png
+
+# Model and vectorizer files
+*.pkl
+
+# Ignore preprocessed data only if it's regenerated (adjust as needed)
+*.csv
+
+.idea/
+.vscode/
+# Ignore the cc.en.300.bin file
+utils/cc.en.300.bin
+
+# Ignore the cc.en.300.bin.gz file
+utils/cc.en.300.bin.gz
