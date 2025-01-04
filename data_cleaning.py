@@ -15,6 +15,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import learning_curve
 import pickle
+import os
 
 
 true_news = pd.read_csv('.\Data\True.csv')
@@ -346,6 +347,7 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
         plt.title('Model Performance Comparison')
         plt.xticks(x + width, metrics)
         plt.legend()
+        os.makedirs('./visualizations', exist_ok=True)
         plt.savefig('./visualizations/model_performance.png')
         plt.close()
 
@@ -358,6 +360,7 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
         plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%')
         plt.title('Distribution of Real vs Fake News')
         plt.axis('equal')
+        os.makedirs('./visualizations', exist_ok=True)
         plt.savefig('./visualizations/dataset_distribution.png')
         plt.close()
 
@@ -367,52 +370,39 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
         plt.title('Text Length Distribution by News Type')
         plt.xlabel('News Type (0: Fake, 1: Real)')
         plt.ylabel('Text Length')
+        os.makedirs('./visualizations', exist_ok=True)
         plt.savefig('./visualizations/text_length_distribution.png')
         plt.close()
 
         # 4. Model Performance Over Time (Learning Curves)
-        # for name, model in models.items():
-        #     train_sizes = np.linspace(0.1, 0.9, 10)
-        # train_scores = []
-        # test_scores = []
-        # for size in train_sizes:
-        #     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-size, random_state=42, stratify=y)
-        #     model.fit(X_train, y_train)
-        #     train_score = model.score(X_train, y_train)
-        #     test_score = model.score(X_test, y_test)
-        #     train_scores.append(train_score)
-        #     test_scores.append(test_score)
-
-        # plt.figure(figsize=(10, 6))
-        # plt.plot(train_sizes, train_scores, label=f'{name} (Training)')
-        # plt.plot(train_sizes, test_scores, label=f'{name} (Testing)')
-        # plt.xlabel('Training Size')
-        # plt.ylabel('Score')
-        # plt.title('Learning Curve')
-        # plt.legend()
-        # plt.savefig(f'./visualizations/learning_curve_{name}.png')
-        # plt.close()
         for name, model in models.items():
-            train_sizes = np.linspace(0.1, 0.9, 10)
-        train_scores = []
-        test_scores = []
-        for size in train_sizes:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-size, random_state=42, stratify=y)
-            model.fit(X_train, y_train)
-            train_score = model.score(X_train, y_train)
-            test_score = model.score(X_test, y_test)
-            train_scores.append(train_score)
-            test_scores.append(test_score)
-
+            train_sizes, train_scores, test_scores = learning_curve(
+                model, X, y, cv=5, n_jobs=-1, 
+                train_sizes=np.linspace(0.1, 1.0, 10),
+                scoring='accuracy'
+            )
+        
+        train_mean = np.mean(train_scores, axis=1)
+        train_std = np.std(train_scores, axis=1)
+        test_mean = np.mean(test_scores, axis=1)
+        test_std = np.std(test_scores, axis=1)
+        
         plt.figure(figsize=(10, 6))
-        plt.plot(train_sizes, train_scores, label=f'{name} (Training)')
-        plt.plot(train_sizes, test_scores, label=f'{name} (Testing)')
+        plt.plot(train_sizes, train_mean, label=f'{name} (Training)', color='blue')
+        plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.1, color='blue')
+        plt.plot(train_sizes, test_mean, label=f'{name} (Testing)', color='red')
+        plt.fill_between(train_sizes, test_mean - test_std, test_mean + test_std, alpha=0.1, color='red')
+        
         plt.xlabel('Training Size')
-        plt.ylabel('Score')
-        plt.title('Learning Curve')
-        plt.legend()
-        plt.savefig(f'visualizations/learning_curve_{name}.png')
+        plt.ylabel('Accuracy Score')
+        plt.title(f'Learning Curve for {name}')
+        plt.legend(loc='best')
+        plt.grid(True)
+        os.makedirs('./visualizations', exist_ok=True)
+        plt.savefig(f'./visualizations/learning_curve_{name}.png')
         plt.close()
+
+        print("Visualizations saved successfully!")
 
 
         # 5. Feature Importance (for Random Forest)
@@ -426,6 +416,7 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
         plt.barh(range(20), importances[indices])
         plt.yticks(range(20), [feature_names[i] for i in indices])
         plt.xlabel('Relative Importance')
+        os.makedirs('./visualizations', exist_ok=True)
         plt.savefig('./visualizations/feature_importance.png')
         plt.close()
 
