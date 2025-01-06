@@ -15,7 +15,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import learning_curve
 import pickle
-import os
+from pathlib import Path
 
 
 true_news = pd.read_csv('.\Data\True.csv')
@@ -322,12 +322,17 @@ for i, row in results_df.iterrows():
 # Add this code at the end of your script
 
 def visualize_results(results, all_news, models, X, y, trained_models, vectorizer):
-    plt.figure(figsize=(12, 6))
+    # Create visualizations directory if it doesn't exist
+    visualization_dir = Path('visualizations')
+    visualization_dir.mkdir(exist_ok=True)
+
     try:
         # 1. Model Performance Comparison
+        plt.figure(figsize=(12, 6))
         metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
         model_names = list(results.keys())
         performance_data = {model: [] for model in model_names}
+
         for name in model_names:
             report = results[name]['report']
             performance_data[name] = [
@@ -336,33 +341,41 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
                 report['weighted avg']['recall'],
                 report['weighted avg']['f1-score']
             ]
-        
+
         x = np.arange(len(metrics))
         width = 0.25
+
         for i, (model, scores) in enumerate(performance_data.items()):
             plt.bar(x + i * width, scores, width, label=model)
-        
+
         plt.xlabel('Metrics')
         plt.ylabel('Score')
         plt.title('Model Performance Comparison')
-        plt.xticks(x + width, metrics)
+        plt.xticks(x + width, metrics, rotation=45)
         plt.legend()
-        os.makedirs('./visualizations', exist_ok=True)
-        plt.savefig('./visualizations/model_performance.png')
+        plt.tight_layout()
+
+        save_path = visualization_dir / 'model_performance.png'
+        plt.savefig(save_path)
         plt.close()
+        print(f"Saved model performance plot to: {save_path}")
 
         # 2. Dataset Balance Visualization
         plt.figure(figsize=(8, 6))
         labels = ['Real News', 'Fake News']
-        sizes = [len(all_news[all_news['label'] == 1]),
-                 len(all_news[all_news['label'] == 0])]
+        sizes = [
+            len(all_news[all_news['label'] == 1]),
+            len(all_news[all_news['label'] == 0])
+        ]
         colors = ['lightgreen', 'lightcoral']
         plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%')
         plt.title('Distribution of Real vs Fake News')
         plt.axis('equal')
-        os.makedirs('./visualizations', exist_ok=True)
-        plt.savefig('./visualizations/dataset_distribution.png')
+
+        save_path = visualization_dir / 'dataset_distribution.png'
+        plt.savefig(save_path)
         plt.close()
+        print(f"Saved dataset distribution plot to: {save_path}")
 
         # 3. Text Length Distribution
         plt.figure(figsize=(12, 6))
@@ -370,59 +383,65 @@ def visualize_results(results, all_news, models, X, y, trained_models, vectorize
         plt.title('Text Length Distribution by News Type')
         plt.xlabel('News Type (0: Fake, 1: Real)')
         plt.ylabel('Text Length')
-        os.makedirs('./visualizations', exist_ok=True)
-        plt.savefig('./visualizations/text_length_distribution.png')
+
+        save_path = visualization_dir / 'text_length_distribution.png'
+        plt.savefig(save_path)
         plt.close()
+        print(f"Saved text length distribution plot to: {save_path}")
 
         # 4. Model Performance Over Time (Learning Curves)
+        train_sizes = np.linspace(0.1, 0.9, 10)
+
         for name, model in models.items():
-            train_sizes, train_scores, test_scores = learning_curve(
-                model, X, y, cv=5, n_jobs=-1, 
-                train_sizes=np.linspace(0.1, 1.0, 10),
-                scoring='accuracy'
-            )
-        
-        train_mean = np.mean(train_scores, axis=1)
-        train_std = np.std(train_scores, axis=1)
-        test_mean = np.mean(test_scores, axis=1)
-        test_std = np.std(test_scores, axis=1)
-        
-        plt.figure(figsize=(10, 6))
-        plt.plot(train_sizes, train_mean, label=f'{name} (Training)', color='blue')
-        plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.1, color='blue')
-        plt.plot(train_sizes, test_mean, label=f'{name} (Testing)', color='red')
-        plt.fill_between(train_sizes, test_mean - test_std, test_mean + test_std, alpha=0.1, color='red')
-        
-        plt.xlabel('Training Size')
-        plt.ylabel('Accuracy Score')
-        plt.title(f'Learning Curve for {name}')
-        plt.legend(loc='best')
-        plt.grid(True)
-        os.makedirs('./visualizations', exist_ok=True)
-        plt.savefig(f'./visualizations/learning_curve_{name}.png')
-        plt.close()
+            plt.figure(figsize=(10, 6))
+            train_scores = []
+            test_scores = []
 
-        print("Visualizations saved successfully!")
+            for size in train_sizes:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=1 - size, random_state=42, stratify=y
+                )
+                model.fit(X_train, y_train)
+                train_scores.append(model.score(X_train, y_train))
+                test_scores.append(model.score(X_test, y_test))
 
+            plt.plot(train_sizes, train_scores, label=f'{name} (Training)')
+            plt.plot(train_sizes, test_scores, label=f'{name} (Testing)')
+            plt.xlabel('Training Size')
+            plt.ylabel('Score')
+            plt.title(f'Learning Curve - {name}')
+            plt.legend()
+            plt.grid(True)
+
+            save_path = visualization_dir / f'learning_curve_{name}.png'
+            plt.savefig(save_path)
+            plt.close()
+            print(f"Saved learning curve for {name} to: {save_path}")
 
         # 5. Feature Importance (for Random Forest)
+        plt.figure(figsize=(12, 8))
         rf_model = trained_models["Random Forest"]
         feature_names = vectorizer.get_feature_names_out()
         importances = rf_model.feature_importances_
         indices = np.argsort(importances)[-20:]  # Top 20 features
 
-        plt.figure(figsize=(12, 8))
-        plt.title('Top 20 Most Important Features')
         plt.barh(range(20), importances[indices])
         plt.yticks(range(20), [feature_names[i] for i in indices])
         plt.xlabel('Relative Importance')
-        os.makedirs('./visualizations', exist_ok=True)
-        plt.savefig('./visualizations/feature_importance.png')
-        plt.close()
+        plt.title('Top 20 Most Important Features')
+        plt.tight_layout()
 
-        print("Visualizations saved successfully!")
+        save_path = visualization_dir / 'feature_importance.png'
+        plt.savefig(save_path)
+        plt.close()
+        print(f"Saved feature importance plot to: {save_path}")
+
+        print("All visualizations saved successfully!")
+
     except Exception as e:
         print(f"Error in visualize_results: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 # Usage
 visualize_results(results, all_news, models, X, y, trained_models, vectorizer)
