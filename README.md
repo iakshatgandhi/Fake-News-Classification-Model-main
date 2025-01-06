@@ -106,4 +106,4 @@ We welcome contributions! Feel free to submit a Pull Request to enhance this pro
 
 **License**
 
-This project is open-source under the MIT License.
+This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
