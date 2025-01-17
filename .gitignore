@@ -15,7 +15,7 @@ __pycache__/
 test_*.py
 
 # Generated artifacts
-*.png
+# *.png
 
 # Model and vectorizer files
 *.pkl
@@ -30,3 +30,6 @@ utils/cc.en.300.bin
 
 # Ignore the cc.en.300.bin.gz file
 utils/cc.en.300.bin.gz
+
+# main file
+main.py
